@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="vi" class="antialiased">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oracle ERP OCR - Xử lý Hóa đơn Thông minh</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --primary: #3b82f6; /* blue-500 */
+            --primary-dark: #2563eb; /* blue-600 */
+            --bg-dark: #0f172a; /* slate-900 */
+            --card-bg: #1e293b; /* slate-800 */
+            --border: #334155; /* slate-700 */
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-dark);
+            color: #f8fafc;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .input-active {
+            border-color: var(--primary);
+            background: rgba(59, 130, 246, 0.1);
+            color: white;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        /* Custom scrollbar for results */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(30, 41, 59, 0.5);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen selection:bg-blue-500/30">
+    <div class="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none z-0"></div>
+    <div class="fixed top-0 left-0 w-full h-[500px] bg-gradient-to-b from-blue-900/20 to-transparent pointer-events-none z-0"></div>
+
+    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10 pb-6 border-b border-slate-800">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <i data-lucide="scan-line" class="w-6 h-6 text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold tracking-tight text-white">Oracle ERP OCR</h1>
+                    <p class="text-sm text-slate-400 font-medium">Hệ thống xử lý hóa đơn tự động</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700 backdrop-blur-sm">
+                    <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <span class="text-xs font-medium text-slate-300">Hệ thống Online</span>
+                </div>
+                <div class="text-xs font-medium px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700 text-slate-400">
+                    v2.5.0
+                </div>
+            </div>
+        </header>
+
+        <main class="grid lg:grid-cols-12 gap-8">
+            <!-- Left Column: Controls & Input -->
+            <div class="lg:col-span-5 space-y-6">
+                
+                <!-- Engine & Model Selection -->
+                <div class="glass-card rounded-2xl p-5 shadow-xl">
+                    <div class="flex items-center gap-2 mb-4 text-slate-400 text-xs font-bold uppercase tracking-wider">
+                        <i data-lucide="cpu" class="w-4 h-4"></i>
+                        Cấu hình xử lý
+                    </div>
+
+                    <!-- Engine Tabs -->
+                    <div class="grid grid-cols-2 gap-2 p-1 bg-slate-800/80 rounded-xl mb-4">
+                        <button id="engine-gemini" class="flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm bg-indigo-600 text-white shadow-indigo-500/25">
+                            <i data-lucide="sparkles" class="w-4 h-4"></i>
+                            Gemini AI
+                        </button>
+                        <button id="engine-gpt" class="flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all">
+                            <i data-lucide="zap" class="w-4 h-4"></i>
+                            OpenAI GPT
+                        </button>
+                    </div>
+
+                    <!-- Models List -->
+                    <div class="space-y-2 max-h-[220px] overflow-y-auto custom-scrollbar pr-1">
+                        <!-- Gemini Models -->
+                        <div id="gemini-models" class="space-y-2">
+                            <label class="group flex items-center gap-3 p-3 rounded-xl border border-slate-700/50 bg-slate-800/30 hover:bg-slate-800/80 hover:border-indigo-500/50 cursor-pointer transition-all">
+                                <input type="radio" name="model" value="flash" checked class="peer sr-only">
+                                <div class="w-4 h-4 rounded-full border border-slate-500 peer-checked:border-indigo-500 peer-checked:bg-indigo-500"></div>
+                                <div class="flex-1">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm font-semibold text-white group-hover:text-indigo-200 transition-colors">Gemini 1.5 Flash</span>
+                                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 ml-2">Nhanh nhất</span>
+                                    </div>
+                                    <p class="text-xs text-slate-400 mt-0.5">Tốc độ cao, chi phí thấp, ổn định</p>
+                                </div>
+                            </label>
+
+                            <label class="group flex items-center gap-3 p-3 rounded-xl border border-slate-700/50 bg-slate-800/30 hover:bg-slate-800/80 hover:border-indigo-500/50 cursor-pointer transition-all">
+                                <input type="radio" name="model" value="flash-2" class="peer sr-only">
+                                <div class="w-4 h-4 rounded-full border border-slate-500 peer-checked:border-indigo-500 peer-checked:bg-indigo-500"></div>
+                                <div class="flex-1">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm font-semibold text-white group-hover:text-indigo-200 transition-colors">Gemini 2.5 Flash</span>
+                                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 ml-2">Mới</span>
+                                    </div>
+                                    <p class="text-xs text-slate-400 mt-0.5">Thế hệ mới, độ chính xác cải thiện</p>
+                                </div>
+                            </label>
+
+                            <label class="group flex items-center gap-3 p-3 rounded-xl border border-slate-700/50 bg-slate-800/30 hover:bg-slate-800/80 hover:border-indigo-500/50 cursor-pointer transition-all">
+                                <input type="radio" name="model" value="flash-lite" class="peer sr-only">
+                                <div class="w-4 h-4 rounded-full border border-slate-500 peer-checked:border-indigo-500 peer-checked:bg-indigo-500"></div>
+                                <div class="flex-1">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm font-semibold text-white group-hover:text-indigo-200 transition-colors">Gemini 2.5 Flash Lite</span>
+                                    </div>
+                                    <p class="text-xs text-slate-400 mt-0.5">Phiên bản nhẹ, tối ưu tài nguyên</p>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- GPT Models -->
+                        <div id="gpt-models" class="hidden space-y-2">
+                            <label class="group flex items-center gap-3 p-3 rounded-xl border border-slate-700/50 bg-slate-800/30 hover:bg-slate-800/80 hover:border-blue-500/50 cursor-pointer transition-all">
+                                <input type="radio" name="model" value="mini" class="peer sr-only">
+                                <div class="w-4 h-4 rounded-full border border-slate-500 peer-checked:border-blue-500 peer-checked:bg-blue-500"></div>
+                                <div class="flex-1">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm font-semibold text-white group-hover:text-blue-200 transition-colors">GPT-4o Mini</span>
+                                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 ml-2">Khuyên dùng</span>
+                                    </div>
+                                    <p class="text-xs text-slate-400 mt-0.5">Cân bằng tốt nhất giữa giá và hiệu năng</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input Section -->
+                <div class="glass-card rounded-2xl p-5 shadow-xl">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-wider">
+                            <i data-lucide="layers" class="w-4 h-4"></i>
+                            Nguồn dữ liệu
+                        </div>
+                    </div>
+
+                    <!-- Input Tabs -->
+                    <div class="flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
+                        <button id="input-file" class="flex-1 min-w-[80px] py-2 px-3 rounded-lg text-xs font-bold flex flex-col items-center gap-1.5 bg-blue-600/10 text-blue-400 border border-blue-500/30 transition-all hover:bg-blue-600/20">
+                            <i data-lucide="file-up" class="w-4 h-4"></i>
+                            Tệp
+                        </button>
+                        <button id="input-text" class="flex-1 min-w-[80px] py-2 px-3 rounded-lg text-xs font-semibold flex flex-col items-center gap-1.5 bg-slate-800 text-slate-400 border border-slate-700 transition-all hover:bg-slate-700 hover:text-slate-200">
+                            <i data-lucide="text-cursor" class="w-4 h-4"></i>
+                            Văn bản
+                        </button>
+                        <button id="input-voice" class="flex-1 min-w-[80px] py-2 px-3 rounded-lg text-xs font-semibold flex flex-col items-center gap-1.5 bg-slate-800 text-slate-400 border border-slate-700 transition-all hover:bg-slate-700 hover:text-slate-200">
+                            <i data-lucide="mic" class="w-4 h-4"></i>
+                            Giọng nói
+                        </button>
+                        <button id="input-url" class="flex-1 min-w-[80px] py-2 px-3 rounded-lg text-xs font-semibold flex flex-col items-center gap-1.5 bg-slate-800 text-slate-400 border border-slate-700 transition-all hover:bg-slate-700 hover:text-slate-200">
+                            <i data-lucide="link" class="w-4 h-4"></i>
+                            URL
+                        </button>
+                    </div>
+
+                    <!-- Input Content Areas -->
+                    <div class="relative min-h-[200px]">
+                        <!-- File Upload -->
+                        <div id="file-input-section" class="input-section h-full flex flex-col">
+                            <div id="drop-zone" class="flex-1 border-2 border-dashed border-slate-700 rounded-xl bg-slate-800/30 hover:bg-slate-800/50 hover:border-blue-500/50 transition-all cursor-pointer flex flex-col items-center justify-center p-8 group">
+                                <div class="w-14 h-14 rounded-full bg-slate-800 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                                    <i data-lucide="cloud-upload" class="w-6 h-6 text-blue-400"></i>
+                                </div>
+                                <p class="text-sm font-medium text-slate-200">Kéo thả hóa đơn vào đây</p>
+                                <p class="text-xs text-slate-500 mt-1">Hỗ trợ PDF, PNG, JPG (Max 10MB)</p>
+                                <input type="file" id="file-input" class="hidden" accept="image/*,application/pdf">
+                            </div>
+                            
+                            <!-- File Preview (Hidden by default) -->
+                            <div id="preview-container" class="hidden h-full">
+                                <div class="flex items-center justify-between p-4 bg-slate-800/60 rounded-xl border border-slate-700/50">
+                                    <div class="flex items-center gap-3 overflow-hidden">
+                                        <div class="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center flex-shrink-0">
+                                            <i data-lucide="file-text" class="w-5 h-5 text-red-500"></i>
+                                        </div>
+                                        <div class="min-w-0">
+                                            <p id="file-name-display" class="text-sm font-medium text-white truncate"></p>
+                                            <p id="file-size-display" class="text-xs text-slate-400">Sẵn sàng xử lý</p>
+                                        </div>
+                                    </div>
+                                    <button id="remove-file" class="p-2 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-red-400 transition-colors">
+                                        <i data-lucide="x" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Text Input -->
+                        <div id="text-input-section" class="input-section hidden h-full">
+                            <textarea id="text-input-area" class="w-full h-[200px] bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 resize-none font-mono" placeholder="Dán nội dung văn bản hóa đơn vào đây..."></textarea>
+                        </div>
+
+                        <!-- Voice Input -->
+                        <div id="voice-input-section" class="input-section hidden h-full flex flex-col items-center justify-center py-4">
+                            <button id="record-btn" class="relative group">
+                                <div class="w-20 h-20 rounded-full bg-slate-800 border-4 border-slate-700 flex items-center justify-center transition-all group-hover:border-red-500/50 group-hover:bg-slate-800">
+                                    <i data-lucide="mic" class="w-8 h-8 text-slate-400 group-hover:text-red-500 transition-colors"></i>
+                                </div>
+                                <div class="absolute inset-0 rounded-full border-2 border-red-500 opacity-0 group-active:opacity-100 animate-ping"></div>
+                            </button>
+                            <p id="recording-status" class="mt-4 text-sm font-medium text-slate-400">Nhấn micro để ghi âm</p>
+                            
+                            <div class="w-full border-t border-slate-800 mt-6 pt-4">
+                                <div class="flex items-center justify-center">
+                                    <input type="file" id="audio-file-input" class="hidden" accept="audio/*">
+                                    <button id="upload-audio-btn" class="flex items-center gap-2 text-xs text-blue-400 hover:text-blue-300 font-medium py-2 px-4 rounded-lg hover:bg-slate-800 transition-colors">
+                                        <i data-lucide="upload" class="w-3 h-3"></i>
+                                        Hoặc tải lên file ghi âm
+                                    </button>
+                                </div>
+                                <p id="audio-file-name" class="text-center text-xs text-slate-500 mt-2 truncate max-w-[250px] mx-auto"></p>
+                            </div>
+                        </div>
+
+                        <!-- URL Input -->
+                        <div id="url-input-section" class="input-section hidden h-full flex flex-col justify-center">
+                            <label class="block text-xs font-semibold text-slate-400 mb-2 ml-1">ĐƯỜNG DẪN ẢNH (URL)</label>
+                            <div class="relative">
+                                <i data-lucide="globe" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"></i>
+                                <input type="url" id="url-input" class="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50" placeholder="https://example.com/invoice.jpg">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Process Button -->
+                <button id="process-btn" disabled class="w-full group relative overflow-hidden rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 p-[1px] shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:shadow-none transition-all">
+                    <div class="relative h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-[11px] flex items-center justify-center gap-2 transition-all group-hover:brightness-110">
+                        <i data-lucide="sparkles" class="w-5 h-5 text-white/90"></i>
+                        <span class="font-bold text-white tracking-wide">TRÍCH XUẤT DỮ LIỆU</span>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Right Column: Results -->
+            <div class="lg:col-span-7">
+                <div class="glass-card rounded-2xl h-full min-h-[600px] flex flex-col relative overflow-hidden">
+                    <!-- Loading Overlay -->
+                    <div id="loading-spinner" class="absolute inset-0 z-20 bg-slate-900/80 backdrop-blur-sm hidden flex flex-col items-center justify-center">
+                        <div class="relative w-16 h-16">
+                            <div class="absolute inset-0 rounded-full border-4 border-slate-700"></div>
+                            <div class="absolute inset-0 rounded-full border-4 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+                        </div>
+                        <p id="loading-text" class="mt-4 text-sm font-semibold text-blue-400 animate-pulse">Đang xử lý hóa đơn...</p>
+                    </div>
+
+                    <!-- Result Header -->
+                    <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/30">
+                        <div class="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-wider">
+                            <i data-lucide="file-check" class="w-4 h-4"></i>
+                            Kết quả trích xuất
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div id="cache-status" class="hidden flex gap-2">
+                                 <!-- Cache badges injected here -->
+                            </div>
+                            <button id="reset-btn" class="hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-300 transition-all">
+                                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                                Nhập mới
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="empty-state" class="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                        <div class="w-20 h-20 rounded-full bg-slate-800/80 flex items-center justify-center mb-6 border border-slate-700 shadow-inner">
+                            <i data-lucide="layout-template" class="w-8 h-8 text-slate-600"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-slate-300">Chưa có dữ liệu</h3>
+                        <p class="text-sm text-slate-500 mt-2 max-w-xs">Chọn hóa đơn và nhấn trích xuất để xem kết quả chi tiết tại đây</p>
+                    </div>
+
+                    <!-- Result Content (Hidden) -->
+                    <div id="result-content" class="hidden flex-1 flex flex-col h-full overflow-hidden">
+                        <!-- Key Stats -->
+                        <div class="p-5 grid grid-cols-3 gap-3 bg-slate-900/20 border-b border-slate-800">
+                            <div class="col-span-1 p-3 rounded-lg bg-slate-800/50 border border-slate-700/50">
+                                <p class="text-[10px] text-slate-500 font-bold uppercase">Tổng tiền</p>
+                                <p id="res-total" class="text-sm font-bold text-emerald-400 truncate mt-0.5">---</p>
+                            </div>
+                            <div class="col-span-1 p-3 rounded-lg bg-slate-800/50 border border-slate-700/50">
+                                <p class="text-[10px] text-slate-500 font-bold uppercase">Mã số thuế</p>
+                                <p id="res-tax" class="text-sm font-bold text-slate-200 truncate mt-0.5">---</p>
+                            </div>
+                            <div class="col-span-1 p-3 rounded-lg bg-slate-800/50 border border-slate-700/50">
+                                <p class="text-[10px] text-slate-500 font-bold uppercase">Ngày HĐ</p>
+                                <p id="res-date" class="text-sm font-bold text-slate-200 truncate mt-0.5">---</p>
+                            </div>
+                        </div>
+
+                        <!-- JSON Viewer -->
+                        <div class="flex-1 relative bg-[#0d1117]">
+                            <div class="absolute top-0 right-0 p-2 z-10">
+                                <button onclick="copyJson()" class="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors border border-slate-700">
+                                    <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
+                            <pre id="json-output" class="w-full h-full p-5 overflow-auto custom-scrollbar text-xs font-mono leading-relaxed text-blue-200"></pre>
+                        </div>
+                        
+                        <!-- Footer Stats -->
+                        <div id="perf-stats" class="px-4 py-2 bg-slate-900 border-t border-slate-800 text-[10px] text-slate-500 flex justify-between items-center">
+                            <!-- Stats injected via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 transform translate-y-24 opacity-0 transition-all duration-300">
+        <div class="bg-slate-900 border border-slate-700 text-slate-200 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3">
+            <i data-lucide="info" class="w-5 h-5 text-blue-500"></i>
+            <span id="toast-msg" class="text-sm font-medium">Notification message</span>
+        </div>
+    </div>
+
+    <script>
+        // Init Icons
+        lucide.createIcons();
+
+        // DOM Elements
+        const elements = {
+            dropZone: document.getElementById('drop-zone'),
+            fileInput: document.getElementById('file-input'),
+            processBtn: document.getElementById('process-btn'),
+            previewContainer: document.getElementById('preview-container'),
+            fileNameDisplay: document.getElementById('file-name-display'),
+            removeFileBtn: document.getElementById('remove-file'),
+            loadingSpinner: document.getElementById('loading-spinner'),
+            loadingText: document.getElementById('loading-text'),
+            emptyState: document.getElementById('empty-state'),
+            resultContent: document.getElementById('result-content'),
+            jsonOutput: document.getElementById('json-output'),
+            perfStats: document.getElementById('perf-stats'),
+            resTotal: document.getElementById('res-total'),
+            resTax: document.getElementById('res-tax'),
+            resDate: document.getElementById('res-date'),
+            toast: document.getElementById('toast'),
+            toastMsg: document.getElementById('toast-msg'),
+            engineGemini: document.getElementById('engine-gemini'),
+            engineGpt: document.getElementById('engine-gpt'),
+            geminiModels: document.getElementById('gemini-models'),
+            gptModels: document.getElementById('gpt-models'),
+            textInputArea: document.getElementById('text-input-area'),
+            urlInput: document.getElementById('url-input'),
+            recordBtn: document.getElementById('record-btn'),
+            recordingStatus: document.getElementById('recording-status'),
+            uploadAudioBtn: document.getElementById('upload-audio-btn'),
+            audioFileInput: document.getElementById('audio-file-input'),
+            audioFileName: document.getElementById('audio-file-name'),
+            inputTabs: document.querySelectorAll('button[id^="input-"]'),
+            resetBtn: document.getElementById('reset-btn')
+        };
+
+        // State
+        let state = {
+            file: null,
+            audioFile: null,
+            engine: 'gemini',
+            inputType: 'file',
+            mediaRecorder: null,
+            audioChunks: [],
+            isRecording: false,
+            cache: { gemini: null, gpt: null }
+        };
+
+        // --- Event Listeners ---
+
+        // Input Tabs
+        elements.inputTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const type = tab.id.replace('input-', '');
+                switchInputType(type);
+            });
+        });
+
+        // Engine Selection
+        elements.engineGemini.onclick = () => switchEngine('gemini');
+        elements.engineGpt.onclick = () => switchEngine('gpt');
+
+        // File Handling
+        elements.dropZone.onclick = () => elements.fileInput.click();
+        elements.dropZone.ondragover = e => { e.preventDefault(); elements.dropZone.classList.add('border-blue-500', 'bg-slate-800'); };
+        elements.dropZone.ondragleave = () => { elements.dropZone.classList.remove('border-blue-500', 'bg-slate-800'); };
+        elements.dropZone.ondrop = e => {
+            e.preventDefault();
+            elements.dropZone.classList.remove('border-blue-500', 'bg-slate-800');
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        };
+        elements.fileInput.onchange = e => { if (e.target.files.length) handleFile(e.target.files[0]); };
+        elements.removeFileBtn.onclick = clearFile;
+
+        // Text & URL Input Monitoring
+        elements.textInputArea.addEventListener('input', updateProcessButton);
+        elements.urlInput.addEventListener('input', updateProcessButton);
+
+        // Voice
+        elements.recordBtn.onclick = toggleRecording;
+        elements.uploadAudioBtn.onclick = () => elements.audioFileInput.click();
+        elements.audioFileInput.onchange = e => {
+            if (e.target.files.length) {
+                state.audioFile = e.target.files[0];
+                elements.audioFileName.textContent = state.audioFile.name;
+                updateProcessButton();
+            }
+        };
+
+        // Process
+        elements.processBtn.onclick = processData;
+        
+        // Reset
+        elements.resetBtn.onclick = resetApp;
+
+        // --- Functions ---
+
+        function switchInputType(type) {
+            state.inputType = type;
+            
+            // Update UI Tabs
+            elements.inputTabs.forEach(tab => {
+                const isSelected = tab.id === `input-${type}`;
+                if (isSelected) {
+                    tab.className = "flex-1 min-w-[80px] py-2 px-3 rounded-lg text-xs font-bold flex flex-col items-center gap-1.5 bg-blue-600/10 text-blue-400 border border-blue-500/30 transition-all";
+                } else {
+                    tab.className = "flex-1 min-w-[80px] py-2 px-3 rounded-lg text-xs font-semibold flex flex-col items-center gap-1.5 bg-slate-800 text-slate-400 border border-slate-700 transition-all hover:bg-slate-700 hover:text-slate-200";
+                }
+            });
+
+            // Show/Hide Sections
+            document.querySelectorAll('.input-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`${type}-input-section`).classList.remove('hidden');
+
+            updateProcessButton();
+        }
+
+        function switchEngine(engine) {
+            state.engine = engine;
+            
+            if (engine === 'gemini') {
+                elements.engineGemini.className = "flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm bg-indigo-600 text-white shadow-indigo-500/25";
+                elements.engineGpt.className = "flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all";
+                elements.geminiModels.classList.remove('hidden');
+                elements.gptModels.classList.add('hidden');
+                // Auto-select Gemini Flash
+                document.querySelector('input[name="model"][value="flash"]').checked = true;
+            } else {
+                elements.engineGpt.className = "flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm bg-blue-600 text-white shadow-blue-500/25";
+                elements.engineGemini.className = "flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all";
+                elements.gptModels.classList.remove('hidden');
+                elements.geminiModels.classList.add('hidden');
+                // Auto-select GPT Mini
+                document.querySelector('input[name="model"][value="mini"]').checked = true;
+            }
+
+            if (state.cache[engine]) displayResult(state.cache[engine]);
+        }
+
+        function handleFile(file) {
+            state.file = file;
+            elements.fileNameDisplay.textContent = file.name;
+            elements.dropZone.parentElement.classList.add('hidden'); // Hide drop zone container
+            elements.previewContainer.classList.remove('hidden');
+            updateProcessButton();
+        }
+
+        function clearFile() {
+            state.file = null;
+            elements.dropZone.parentElement.classList.remove('hidden');
+            elements.previewContainer.classList.add('hidden');
+            elements.fileInput.value = '';
+            
+            // Check if we also need to hide reset if viewing results
+            if(elements.resultContent.classList.contains('hidden')) {
+                  updateProcessButton();
+            }
+        }
+        
+        function resetApp() {
+            // Reset State
+            state.file = null;
+            state.audioFile = null;
+            state.mediaRecorder = null;
+            state.audioChunks = [];
+            state.isRecording = false;
+
+            // Reset Inputs
+            elements.fileInput.value = '';
+            elements.textInputArea.value = '';
+            elements.urlInput.value = '';
+            elements.audioFileInput.value = '';
+            
+            // Reset Input UI
+            elements.dropZone.parentElement.classList.remove('hidden');
+            elements.previewContainer.classList.add('hidden');
+            elements.recordingStatus.innerHTML = 'Nhấn micro để ghi âm';
+            elements.audioFileName.textContent = '';
+            
+            // Reset Result UI
+            elements.emptyState.classList.remove('hidden');
+            elements.resultContent.classList.add('hidden');
+            elements.resetBtn.classList.add('hidden');
+            elements.cacheStatus && (elements.cacheStatus.innerHTML = '');
+            
+            updateProcessButton();
+        }
+
+        async function toggleRecording() {
+            if (!state.isRecording) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    state.mediaRecorder = new MediaRecorder(stream);
+                    state.audioChunks = [];
+                    state.mediaRecorder.ondataavailable = e => state.audioChunks.push(e.data);
+                    state.mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(state.audioChunks, { type: 'audio/webm' });
+                        state.audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
+                        elements.recordingStatus.innerHTML = `<span class="text-emerald-400">Đã thu âm (${Math.round(audioBlob.size/1024)}KB)</span>`;
+                        updateProcessButton();
+                    };
+                    state.mediaRecorder.start();
+                    state.isRecording = true;
+                    elements.recordingStatus.innerHTML = '<span class="text-red-400 animate-pulse">● Đang ghi âm...</span>';
+                } catch (err) {
+                    showToast('Không thể truy cập microphone');
+                }
+            } else {
+                state.mediaRecorder?.stop();
+                state.isRecording = false;
+            }
+        }
+
+        function updateProcessButton() {
+            let canProcess = false;
+            switch (state.inputType) {
+                case 'file': canProcess = !!state.file; break;
+                case 'text': canProcess = elements.textInputArea.value.trim().length > 5; break;
+                case 'voice': canProcess = !!state.audioFile; break;
+                case 'url': canProcess = elements.urlInput.value.trim().length > 5; break;
+            }
+            elements.processBtn.disabled = !canProcess;
+        }
+
+        async function processData() {
+            elements.processBtn.disabled = true;
+            elements.loadingSpinner.classList.remove('hidden');
+            elements.loadingText.textContent = `AI Engine (${state.engine.toUpperCase()}) đang xử lý...`;
+            elements.emptyState.classList.add('hidden');
+            elements.resultContent.classList.add('hidden');
+
+            const selectedModel = document.querySelector('input[name="model"]:checked')?.value || '';
+
+            try {
+                let response;
+                // Determine logic based on input type
+                if (state.inputType === 'file') {
+                    if (!state.file) throw new Error('Chưa chọn tệp tin');
+                    const formData = new FormData();
+                    formData.append('file', state.file);
+                    response = await fetch(`/ocr/invoice?engine=${state.engine}&model=${selectedModel}`, { method: 'POST', body: formData });
+                } else if (state.inputType === 'text') {
+                    response = await fetch('/ocr/text', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: elements.textInputArea.value.trim(), engine: state.engine, model: selectedModel })
+                    });
+                } else if (state.inputType === 'voice') {
+                    if (!state.audioFile) throw new Error('Chưa có âm thanh');
+                    const formData = new FormData();
+                    formData.append('file', state.audioFile);
+                    response = await fetch(`/ocr/voice?engine=${state.engine}&model=${selectedModel}`, { method: 'POST', body: formData });
+                } else if (state.inputType === 'url') {
+                    response = await fetch('/ocr/url', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url: elements.urlInput.value.trim(), engine: state.engine, model: selectedModel })
+                    });
+                }
+
+                if (!response.ok) throw new Error('Xử lý thất bại');
+                const data = await response.json();
+                
+                if (data.status === 'error') throw new Error(data.message);
+
+                state.cache[state.engine] = data;
+                displayResult(data);
+
+            } catch (error) {
+                console.error(error);
+                showToast(error.message || 'Đã xảy ra lỗi');
+                elements.emptyState.classList.remove('hidden');
+            } finally {
+                elements.processBtn.disabled = false;
+                elements.loadingSpinner.classList.add('hidden');
+            }
+        }
+
+        function displayResult(data) {
+            elements.emptyState.classList.add('hidden');
+            elements.resultContent.classList.remove('hidden');
+            elements.resetBtn.classList.remove('hidden');
+            elements.jsonOutput.textContent = JSON.stringify(data, null, 2);
+
+            // Populate Quick Stats using Optional Chaining
+            const json = data.json || {};
+            elements.resTotal.textContent = json.financial_summary?.total_payment_amount || "N/A";
+            elements.resTax.textContent = json.seller_info?.seller_tax_code || "N/A";
+            elements.resDate.textContent = json.general_info?.invoice_date || "N/A";
+
+            // Footer Stats
+            elements.perfStats.innerHTML = `
+                <div class="flex gap-4">
+                    <span>Model: <span class="text-slate-300 font-mono">${data.model_used || 'Unknown'}</span></span>
+                    <span>Thời gian: <span class="text-emerald-400 font-mono">${data.processing_time_ms}ms</span></span>
+                </div>
+                <div>${new Date().toLocaleTimeString()}</div>
+            `;
+
+            updateCacheStatus();
+        }
+
+        function updateCacheStatus() {
+            const container = document.getElementById('cache-status');
+            container.classList.remove('hidden');
+            let html = '';
+            if (state.cache.gemini) html += `<span class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 text-[10px] font-bold border border-indigo-500/30">Gemini Sẵn sàng</span>`;
+            if (state.cache.gpt) html += `<span class="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 text-[10px] font-bold border border-blue-500/30">GPT Sẵn sàng</span>`;
+            container.innerHTML = html;
+        }
+
+        function showToast(msg) {
+            elements.toastMsg.textContent = msg;
+            elements.toast.classList.remove('translate-y-24', 'opacity-0');
+            setTimeout(() => elements.toast.classList.add('translate-y-24', 'opacity-0'), 4000);
+        }
+
+        function copyJson() {
+            const text = elements.jsonOutput.textContent;
+            navigator.clipboard.writeText(text);
+            showToast('Đã sao chép JSON vào clipboard');
+        }
+
+    </script>
+</body>
+</html>
