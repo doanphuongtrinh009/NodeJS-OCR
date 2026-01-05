@@ -1,225 +1,133 @@
-# Oracle ERP OCR - Vietnamese Invoice Processing API
+# NodeJS OCR - Vietnamese Invoice Processing Middleware
 
-Hệ thống xử lý OCR hóa đơn GTGT Việt Nam sử dụng AI (Gemini & ChatGPT) theo chuẩn **Thông tư 78/2021/TT-BTC**.
+Middleware xử lý OCR hóa đơn GTGT Việt Nam sử dụng AI đa phương thức (Google Gemini & OpenAI GPT). Được thiết kế để tích hợp dễ dàng với Oracle ERP và các hệ thống tài chính khác.
 
-## 🚀 Tính năng
+## 🚀 Tính năng nổi bật
 
-- ✅ **Schema đầy đủ**: ~70 fields theo Thông tư 78/2021/TT-BTC
-- ✅ **Đa AI Engine**: Hỗ trợ cả Google Gemini 1.5 Flash và OpenAI GPT-4o Mini
-- ✅ **So sánh hiệu suất**: Đo thời gian xử lý và độ tin cậy của từng AI engine
-- ✅ **OCR đa định dạng**: Hỗ trợ ảnh (JPG, PNG) và PDF
-- ✅ **Trích xuất đầy đủ**:
-  - Thông tin cơ quan thuế (mã tra cứu, lookup code)
-  - Thông tin liên hệ (phone, email, bank account)
-  - Chữ ký số (digital signature)
-  - Chi tiết theo thuế suất (tax breakdowns)
-  - Hóa đơn điều chỉnh/thay thế
-- ✅ **Giao diện hiện đại**: UI đẹp với Tailwind CSS
-- ✅ **RESTful API**: Dễ dàng tích hợp với Oracle ERP
+- **Đa phương thức đầu vào**:
+  - 📄 **File**: Hỗ trợ ảnh (JPG, PNG) và PDF.
+  - 🎤 **Voice**: Xử lý file âm thanh/ghi âm (Speech-to-Text).
+  - 📝 **Text**: Xử lý trực tiếp nội dung văn bản (copy-paste).
+  - 🔗 **URL**: Xử lý ảnh/PDF từ đường dẫn mạng.
+- **AI Engines mạnh mẽ**:
+  - Hỗ trợ Google Gemini 1.5 Flash/Pro.
+  - Hỗ trợ OpenAI GPT-4o / GPT-4o Mini.
+- **Schema chuẩn Thông tư 78**:
+  - Trích xuất tự động >70 trường thông tin hóa đơn.
+  - Bao gồm: Mã cơ quan thuế, thông tin người mua/bán, chi tiết dòng hàng, thuế suất.
+- **Tối ưu cho Việt Nam**:
+  - Nhận diện chính xác tiếng Việt, chữ ký số, con dấu đỏ.
+- **Giao diện Web tích hợp**:
+  - UI hiện đại, dễ sử dụng để test và demo.
 
 ## 📦 Cài đặt
 
-```bash
-npm install
-```
+1. **Clone repository**:
+
+   ```bash
+   git clone https://github.com/doanphuongtrinh009/NodeJS-OCR.git
+   cd NodeJS-OCR
+   ```
+
+2. **Cài đặt dependencies**:
+   ```bash
+   npm install
+   ```
 
 ## ⚙️ Cấu hình
 
-Tạo file `.env` với nội dung:
+Tạo file `.env` tại thư mục gốc:
 
 ```env
-OPENAI_API_KEY=your-openai-api-key-here
-GEMINI_API_KEY=your-gemini-api-key-here
+# AI Provider Keys (Bắt buộc ít nhất 1)
+OPENAI_API_KEY=sk-...
+GEMINI_API_KEY=AIza...
+
+# Server Config
 PORT=8080
 ```
 
 ## 🏃 Chạy ứng dụng
 
-### Development Mode
+### Chế độ Development
 
 ```bash
 npm run dev
 ```
 
-### Production Mode
+### Chế độ Production
 
 ```bash
 npm run build
 npm start
 ```
 
-Server sẽ chạy tại: **http://localhost:8080**
+Server sẽ hoạt động tại: `http://localhost:8080`
 
 ## 📖 API Documentation
 
-### POST `/ocr/invoice`
+### 1. Upload File Hóa Đơn
 
-Xử lý hóa đơn và trả về dữ liệu JSON.
+**Endpoint**: `POST /ocr/invoice`
 
-#### Query Parameters
+- **Body**: Form-data `file` (Image/PDF).
+- **Query**: `?engine=gemini` (default) hoặc `gpt`.
 
-- `engine` (optional): Chọn AI engine - `gemini` hoặc `gpt` (mặc định: `gemini`)
+### 2. Xử lý qua Giọng nói (Voice)
 
-#### Request
+**Endpoint**: `POST /ocr/voice`
 
-- **Content-Type**: `multipart/form-data`
-- **Body**:
-  - `file`: File hóa đơn (image/pdf)
+- **Body**: Form-data `file` (MP3, WAV, M4A...).
+- **Query**: `?engine=gemini` hoặc `gpt`.
+- _Mô tả: Chuyển đổi giọng nói thành văn bản và trích xuất thông tin hóa đơn._
 
-#### Response
+### 3. Xử lý Văn bản (Raw Text)
 
-```json
-{
-  "status": "success",
-  "json": {
-    "invoice_header": {
-      "invoice_number": "0001234",
-      "invoice_symbol": "01AA-23TT",
-      "invoice_form": "01GTKT0/001",
-      "issue_date": "2024-01-15",
-      "invoice_type": "VAT",
-      "currency": "VND",
-      "payment_method": "TM/CK"
-    },
-    "seller": {
-      "name": "CÔNG TY TNHH ABC",
-      "tax_code": "0123456789",
-      "address": "123 Đường ABC, P. XYZ, Q. 1, TP.HCM",
-      "phone": "028-12345678",
-      "bank_account": "1234567890-VCB"
-    },
-    "buyer": {
-      "name": "CÔNG TY CP DEF",
-      "tax_code": "9876543210",
-      "address": "456 Đường DEF, P. KLM, Q. 2, TP.HCM",
-      "email": "contact@def.com"
-    },
-    "items": [
-      {
-        "name": "Sản phẩm A",
-        "unit": "Cái",
-        "quantity": 10,
-        "unit_price": 100000,
-        "amount": 1000000,
-        "vat_rate": 10,
-        "vat_amount": 100000
-      }
-    ],
-    "tax_summary": {
-      "sub_total": 1000000,
-      "vat_total": 100000,
-      "discount": 0,
-      "total": 1100000,
-      "amount_in_words": "Một triệu một trăm nghìn đồng chẵn"
-    },
-    "metadata": {
-      "confidence": 0.95,
-      "signed": true,
-      "signature_stamp": true,
-      "hash": "",
-      "uuid": ""
-    }
-  },
-  "text_ocr": "Full extracted text...",
-  "confidence": 0.92,
-  "engine_used": "gemini",
-  "processing_time_ms": 3245
-}
-```
+**Endpoint**: `POST /ocr/text`
 
-## 🌐 Sử dụng giao diện Web
+- **Body (JSON)**: `{ "text": "Nội dung hóa đơn...", "engine": "gemini" }`
+- _Mô tả: Xử lý văn bản đã được OCR sơ bộ hoặc copy từ nguồn khác._
 
-1. Mở trình duyệt: `http://localhost:8080`
-2. Chọn AI Engine (Gemini hoặc GPT)
-3. Tải lên file hóa đơn
-4. Nhấn "BẮT ĐẦU TRÍCH XUẤT"
-5. Xem kết quả với:
-   - Thông tin quan trọng (số hóa đơn, người bán, người mua, tổng tiền)
-   - Thời gian xử lý
-   - Độ tin cậy
-   - Raw JSON đầy đủ
+### 4. Xử lý từ URL
 
-## 🧪 Test với cURL
+**Endpoint**: `POST /ocr/url`
 
-### Sử dụng Gemini (mặc định)
-
-```bash
-curl -X POST http://localhost:8080/ocr/invoice \
-  -F "file=@/path/to/invoice.jpg"
-```
-
-### Sử dụng GPT
-
-```bash
-curl -X POST "http://localhost:8080/ocr/invoice?engine=gpt" \
-  -F "file=@/path/to/invoice.jpg"
-```
-
-## 📊 So sánh Gemini vs GPT
-
-| Tiêu chí     | Gemini 1.5 Flash | GPT-4o Mini     |
-| ------------ | ---------------- | --------------- |
-| Tốc độ       | ⚡⚡⚡ Nhanh hơn | ⚡⚡ Trung bình |
-| Chi phí      | 💰 Rẻ hơn        | 💰💰 Đắt hơn    |
-| Độ chính xác | 🎯 Cao           | 🎯🎯 Rất cao    |
-| Ngôn ngữ VN  | ✅ Tốt           | ✅ Rất tốt      |
-
-**Khuyến nghị**: Dùng Gemini cho xử lý hàng loạt, GPT cho độ chính xác cao nhất.
+- **Body (JSON)**: `{ "url": "https://example.com/invoice.jpg", "engine": "gemini" }`
 
 ## 🔧 Cấu trúc dự án
 
 ```
-Node js OCR/
+NodeJS-OCR/
 ├── src/
-│   ├── config/          # Cấu hình (API keys, env)
-│   ├── controllers/     # Xử lý request/response
-│   ├── routes/          # Định nghĩa API endpoints
-│   ├── services/        # Logic nghiệp vụ (OCR, AI)
-│   ├── types/           # TypeScript interfaces
-│   ├── utils/           # Hàm tiện ích
+│   ├── config/          # Cấu hình hệ thống
+│   ├── controllers/     # Điều phối request
+│   ├── routes/          # Định nghĩa API endpoints (ocr.route.ts)
+│   ├── services/        # Logic xử lý AI (GeminiService, OpenAIService)
+│   ├── utils/           # Tiện ích chung
 │   └── server.ts        # Entry point
-├── public/              # Giao diện web
-├── .env                 # Biến môi trường
+├── public/              # Giao diện Web Demo
+├── dist/                # Code đã build
 └── package.json
 ```
 
-## 🐛 Xử lý lỗi
+## 🤝 Tích hợp Oracle ERP / PL/SQL
 
-### Lỗi thường gặp
+API này trả về JSON có cấu trúc phẳng và mảng, dễ dàng parse trong PL/SQL bằng `APEX_JSON` hoặc `JSON_TABLE`.
 
-**1. "OpenAI API key not configured"**
+**Mapping gợi ý:**
 
-- Kiểm tra `.env` có `OPENAI_API_KEY` chưa
+- `invoice_header.invoice_number` ➡️ `AP_INVOICES_INTERFACE.INVOICE_NUM`
+- `seller.tax_code` ➡️ `AP_SUPPLIERS.SEGMENT1` (Vendor Num/Tax ID)
+- `tax_summary.total` ➡️ `AP_INVOICES_INTERFACE.INVOICE_AMOUNT`
+- `items[]` ➡️ `AP_INVOICE_LINES_INTERFACE`
 
-**2. "Gemini API key not configured"**
+## 📊 So sánh AI Engine
 
-- Kiểm tra `.env` có `GEMINI_API_KEY` chưa
+| Engine               | Tốc độ           | Chi phí     | Phù hợp nhất                     |
+| -------------------- | ---------------- | ----------- | -------------------------------- |
+| **Gemini 1.5 Flash** | ⚡⚡⚡ Rất nhanh | 💰 Rẻ       | Xử lý số lượng lớn, OCR cơ bản   |
+| **GPT-4o Mini**      | ⚡⚡ Trung bình  | 💰 Vừa phải | Độ chính xác cao, logic phức tạp |
 
-**3. "OCR Failed"**
+## 📝 License
 
-- File ảnh quá mờ hoặc chất lượng thấp
-- Thử tăng độ phân giải ảnh
-
-## 📝 Lưu ý
-
-- File upload tối đa: 10MB
-- Hỗ trợ định dạng: JPG, PNG, PDF
-- PDF scan cần độ phân giải tốt để OCR chính xác
-- Hóa đơn cần rõ ràng, không bị che khuất
-
-## 🤝 Tích hợp Oracle ERP
-
-API trả về JSON chuẩn, dễ dàng map vào Oracle ERP:
-
-- `invoice_number` → Invoice Number
-- `seller.tax_code` → Vendor Tax ID
-- `total` → Total Amount
-- `items[]` → Line Items
-
-## 📞 Hỗ trợ
-
-Nếu gặp vấn đề, kiểm tra:
-
-1. Console log của server
-2. Network tab trong DevTools
-3. File `.env` đã cấu hình đúng chưa
+ISC
